@@ -40,15 +40,13 @@ type CartAction =
 const cartReducer = (state: CartState, action: CartAction): CartState => {
   switch (action.type) {
     case 'ADD_TO_CART': {
-      const existingItem = state.items.find(item => item.id === action.payload.id)
-      
+      const existingItem = state.items.find((item) => item.id === action.payload.id)
+
       if (existingItem) {
-        const updatedItems = state.items.map(item =>
-          item.id === action.payload.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
+        const updatedItems = state.items.map((item) =>
+          item.id === action.payload.id ? { ...item, quantity: item.quantity + 1 } : item
         )
-        
+
         return {
           ...state,
           items: updatedItems,
@@ -67,45 +65,43 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         }
       }
     }
-    
+
     case 'REMOVE_FROM_CART': {
-      const itemToRemove = state.items.find(item => item.id === action.payload)
+      const itemToRemove = state.items.find((item) => item.id === action.payload)
       if (!itemToRemove) return state
-      
+
       return {
         ...state,
-        items: state.items.filter(item => item.id !== action.payload),
+        items: state.items.filter((item) => item.id !== action.payload),
         totalItems: state.totalItems - itemToRemove.quantity,
-        totalAmount: state.totalAmount - (itemToRemove.amount * itemToRemove.quantity),
-        totalUSDC: state.totalUSDC - (parseFloat(itemToRemove.usdcPrice) * itemToRemove.quantity)
+        totalAmount: state.totalAmount - itemToRemove.amount * itemToRemove.quantity,
+        totalUSDC: state.totalUSDC - parseFloat(itemToRemove.usdcPrice) * itemToRemove.quantity
       }
     }
-    
+
     case 'UPDATE_QUANTITY': {
-      const item = state.items.find(item => item.id === action.payload.id)
+      const item = state.items.find((item) => item.id === action.payload.id)
       if (!item) return state
-      
+
       const quantityDiff = action.payload.quantity - item.quantity
-      
+
       if (action.payload.quantity <= 0) {
         return cartReducer(state, { type: 'REMOVE_FROM_CART', payload: action.payload.id })
       }
-      
-      const updatedItems = state.items.map(item =>
-        item.id === action.payload.id
-          ? { ...item, quantity: action.payload.quantity }
-          : item
+
+      const updatedItems = state.items.map((item) =>
+        item.id === action.payload.id ? { ...item, quantity: action.payload.quantity } : item
       )
-      
+
       return {
         ...state,
         items: updatedItems,
         totalItems: state.totalItems + quantityDiff,
-        totalAmount: state.totalAmount + (item.amount * quantityDiff),
-        totalUSDC: state.totalUSDC + (parseFloat(item.usdcPrice) * quantityDiff)
+        totalAmount: state.totalAmount + item.amount * quantityDiff,
+        totalUSDC: state.totalUSDC + parseFloat(item.usdcPrice) * quantityDiff
       }
     }
-    
+
     case 'CLEAR_CART': {
       return {
         items: [],
@@ -114,11 +110,11 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
         totalUSDC: 0
       }
     }
-    
+
     case 'LOAD_CART': {
       return action.payload
     }
-    
+
     default:
       return state
   }
@@ -164,9 +160,9 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [state])
 
   const addToCart = (giftCard: GiftCard) => {
-    const existingItem = state.items.find(item => item.id === giftCard.id)
+    const existingItem = state.items.find((item) => item.id === giftCard.id)
     dispatch({ type: 'ADD_TO_CART', payload: giftCard })
-    
+
     // Show toast after dispatch with improved styling
     if (existingItem) {
       toast.success(`Added another ${giftCard.name} to cart`, {
@@ -179,12 +175,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           boxShadow: '0 10px 25px rgba(124, 58, 237, 0.3)',
           padding: '16px',
           fontSize: '14px',
-          fontWeight: '600',
+          fontWeight: '600'
         },
         iconTheme: {
           primary: '#00f5ff',
-          secondary: '#1a1a2e',
-        },
+          secondary: '#1a1a2e'
+        }
       })
     } else {
       toast.success(`🛒 ${giftCard.name} added to cart`, {
@@ -197,20 +193,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           boxShadow: '0 10px 25px rgba(124, 58, 237, 0.3)',
           padding: '16px',
           fontSize: '14px',
-          fontWeight: '600',
+          fontWeight: '600'
         },
         iconTheme: {
           primary: '#00f5ff',
-          secondary: '#1a1a2e',
-        },
+          secondary: '#1a1a2e'
+        }
       })
     }
   }
 
   const removeFromCart = (id: string) => {
-    const itemToRemove = state.items.find(item => item.id === id)
+    const itemToRemove = state.items.find((item) => item.id === id)
     dispatch({ type: 'REMOVE_FROM_CART', payload: id })
-    
+
     if (itemToRemove) {
       toast.success(`🗑️ ${itemToRemove.name} removed from cart`, {
         duration: 3000,
@@ -222,12 +218,12 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
           boxShadow: '0 10px 25px rgba(239, 68, 68, 0.3)',
           padding: '16px',
           fontSize: '14px',
-          fontWeight: '600',
+          fontWeight: '600'
         },
         iconTheme: {
           primary: '#ff6b6b',
-          secondary: '#2e1a1a',
-        },
+          secondary: '#2e1a1a'
+        }
       })
     }
   }
@@ -248,29 +244,34 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         boxShadow: '0 10px 25px rgba(34, 197, 94, 0.3)',
         padding: '16px',
         fontSize: '14px',
-        fontWeight: '600',
+        fontWeight: '600'
       },
       iconTheme: {
         primary: '#4ade80',
-        secondary: '#1a2e1a',
-      },
+        secondary: '#1a2e1a'
+      }
     })
   }
 
   const getItemQuantity = (id: string): number => {
-    const item = state.items.find(item => item.id === id)
+    const item = state.items.find((item) => item.id === id)
+    console.log('-----------')
+    console.log('item quanitty: ', item ? item.quantity : 'undefined')
+    console.log('-----------')
     return item ? item.quantity : 0
   }
 
   return (
-    <CartContext.Provider value={{
-      state,
-      addToCart,
-      removeFromCart,
-      updateQuantity,
-      clearCart,
-      getItemQuantity
-    }}>
+    <CartContext.Provider
+      value={{
+        state,
+        addToCart,
+        removeFromCart,
+        updateQuantity,
+        clearCart,
+        getItemQuantity
+      }}
+    >
       {children}
     </CartContext.Provider>
   )
@@ -282,4 +283,4 @@ export const useCart = () => {
     throw new Error('useCart must be used within a CartProvider')
   }
   return context
-} 
+}

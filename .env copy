@@ -1,0 +1,26 @@
+# Your Medusa backend, should be updated to where you are hosting your server. Remember to update CORS settings for your server. See – https://docs.medusajs.com/usage/configurations#admin_cors-and-store_cors
+# MEDUSA_BACKEND_URL=http://116.203.113.34:9000
+MEDUSA_BACKEND_URL=https://api.instant-guthaben.de
+
+# Your publishable key that can be attached to sales channels. See - https://docs.medusajs.com/development/publishable-api-key
+# NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_6cf231946fb998c7c51007d1f9f6ee121a230bb795657b651c32be7086717eb6
+# NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_ba3d0537206d796f6951e9b405666656cb4e444c16bacc2947b92a046b005934
+NEXT_PUBLIC_MEDUSA_PUBLISHABLE_KEY=pk_69978428c997eb99f62199ea6d3d1a7b8a859e77e004eabde9dfbfe6511dadb9
+
+# Your store URL, should be updated to where you are hosting your storefront.
+# NEXT_PUBLIC_BASE_URL=http://116.203.113.34:8000
+NEXT_PUBLIC_BASE_URL=http://localhost:8000
+
+# Your preferred default region. When middleware cannot determine the user region from the "x-vercel-country" header, the default region will be used. ISO-2 lowercase format.
+NEXT_PUBLIC_DEFAULT_REGION=us
+
+# Your Stripe public key. See – https://docs.medusajs.com/add-plugins/stripe
+# NEXT_PUBLIC_STRIPE_KEY=pk_test_51RN6FuPqDNuhspIcrTxPu9zczvcl9Lbe13pERuAwiLeUY2i0OVJdsvniXxCtQ2e7GjmYT25btMTSwTaO2poyoAqS00f11Bpayl
+NEXT_PUBLIC_STRIPE_KEY=pk_69978428c997eb99f62199ea6d3d1a7b8a859e77e004eabde9dfbfe6511dadb9 ⁠
+# Your Next.js revalidation secret. See – https://nextjs.org/docs/app/building-your-application/data-fetching/fetching-caching-and-revalidating#on-demand-revalidation
+REVALIDATE_SECRET=supersecret
+NEXT_PUBLIC_WEBHOOK_SERVER_URL=https://webhook.88808880.xyz
+NEXT_PUBLIC_MEDUSA_BACKEND_URL=https://api.instant-guthaben.de
+
+MEDUSA_ADMIN_EMAIL=admin@medusajs.com
+MEDUSA_ADMIN_PASSWORD=supersecret
