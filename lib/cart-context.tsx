@@ -17,6 +17,7 @@ export interface GiftCard {
   color: string
   description: string
   external_id?: string
+  maxInStock: number
 }
 
 export interface CartItem extends GiftCard {
@@ -82,7 +83,8 @@ const cartReducer = (state: CartState, action: CartAction): CartState => {
     case 'UPDATE_QUANTITY': {
       const item = state.items.find((item) => item.id === action.payload.id)
       if (!item) return state
-
+      // if (action.payload.quantity > getItemQuantity(item.id)) {
+      // }
       const quantityDiff = action.payload.quantity - item.quantity
 
       if (action.payload.quantity <= 0) {
