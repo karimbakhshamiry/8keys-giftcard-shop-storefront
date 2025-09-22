@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import { ShoppingCart, X, Plus, Minus, Trash2, ArrowRight, Gift, CreditCard, Coins } from './icons'
-import { useCart } from '../lib/cart-context'
+// import { useCart } from '../lib/cart-context'
+import { useCart } from '@/contexts/CartProvider2'
 
 interface CartProps {
   isOpen: boolean
@@ -12,27 +13,31 @@ interface CartProps {
 }
 
 export default function Cart({ isOpen, onClose }: CartProps) {
-  const { state, updateQuantity, removeFromCart, clearCart, getItemQuantity } = useCart()
 
-  const handleIncreaseQuantity = (id: string, currentQuantity: number) => {
+  const { updateItemQuantity, removeItem, cart} = useCart()
+
+  const totalItems = cart?.items?.length || 0
+
+  const handleIncreaseQuantity = (variant_id: string, currentQuantity: number) => {
     // alert(getItemQuantity(id))
-    updateQuantity(id, currentQuantity + 1)
+    updateItemQuantity(variant_id, currentQuantity + 1)
   }
 
-  const handleDecreaseQuantity = (id: string, currentQuantity: number) => {
+  const handleDecreaseQuantity = (variant_id: string, currentQuantity: number) => {
     if (currentQuantity <= 1) {
-      removeFromCart(id)
+      removeItem(variant_id)
     } else {
-      updateQuantity(id, currentQuantity - 1)
+      updateItemQuantity(variant_id, currentQuantity - 1)
     }
   }
 
-  const handleRemoveItem = (id: string) => {
-    removeFromCart(id)
+  const handleRemoveItem = (variant_id: string) => {
+    removeItem(variant_id)
   }
 
   const handleClearCart = () => {
-    clearCart()
+    // clearCart()
+    // @safari.todo 
     onClose()
   }
 
@@ -69,7 +74,7 @@ export default function Cart({ isOpen, onClose }: CartProps) {
                       Shopping Cart
                     </h2>
                     <p className='text-sm transition-colors duration-300 dark:text-gray-400 light:text-gray-600'>
-                      {state.totalItems} {state.totalItems === 1 ? 'item' : 'items'}
+                      {totalItems} {totalItems === 1 ? 'item' : 'items'}
                     </p>
                   </div>
                 </div>
@@ -83,7 +88,7 @@ export default function Cart({ isOpen, onClose }: CartProps) {
 
               {/* Cart Content */}
               <div className='flex-1 overflow-y-auto'>
-                {state.items.length === 0 ? (
+                {totalItems === 0 ? (
                   /* Empty Cart */
                   <div className='flex flex-col items-center justify-center h-full p-6 text-center'>
                     <div className='p-4 transition-colors duration-300 dark:bg-gaming-purple/10 light:bg-blue-100/50 rounded-full mb-4'>
@@ -103,7 +108,7 @@ export default function Cart({ isOpen, onClose }: CartProps) {
                 ) : (
                   /* Cart Items */
                   <div className='p-4 space-y-4'>
-                    {state.items.map((item) => (
+                    {cart?.items?.map((item) => (
                       <motion.div
                         key={item.id}
                         layout
@@ -114,7 +119,7 @@ export default function Cart({ isOpen, onClose }: CartProps) {
                       >
                         {/* Remove Button */}
                         <button
-                          onClick={() => handleRemoveItem(item.id)}
+                          onClick={() => handleRemoveItem(item?.variant?.id || "")}
                           className='absolute top-2 right-2 p-1 transition-colors duration-300 dark:hover:bg-gaming-purple/20 light:hover:bg-red-100 rounded z-10'
                         >
                           <X className='w-4 h-4 transition-colors duration-300 dark:text-gray-400 dark:hover:text-gaming-neon light:text-gray-500 light:hover:text-red-600' />
@@ -124,33 +129,33 @@ export default function Cart({ isOpen, onClose }: CartProps) {
                         <div className='flex items-center space-x-4'>
                           {/* Platform Image */}
                           <div
-                            className={`w-16 h-16 rounded-lg bg-gradient-to-br ${item.color} flex items-center justify-center flex-shrink-0`}
+                            className={`w-16 h-16 rounded-lg bg-gradient-to-br {item.color} flex items-center justify-center flex-shrink-0`}
                           >
                             <div className='text-white font-gaming font-bold text-xs text-center'>
-                              {item.platform}
+                              item?.variant?.product?.metadata?.platform
                             </div>
                           </div>
 
                           {/* Item Details */}
                           <div className='flex-1 min-w-0'>
                             <h4 className='font-gaming font-semibold truncate transition-colors duration-300 dark:text-white light:text-gray-900'>
-                              {item.name}
+                            item.name
                             </h4>
                             <p className='text-sm transition-colors duration-300 dark:text-gray-400 light:text-gray-600'>
-                              {item.platform}
+                            item.platform
                             </p>
 
                             {/* Pricing */}
                             <div className='mt-1'>
                               <div className='text-lg font-bold transition-colors duration-300 dark:text-white light:text-gray-900'>
-                                ${item.amount}
+                                $item.amount
                                 <span className='text-sm transition-colors duration-300 dark:text-gray-400 light:text-gray-600 ml-1'>
-                                  {item.currency}
+                                  item.currency
                                 </span>
                               </div>
                               <div className='text-sm transition-colors duration-300 dark:text-gaming-cyan light:text-blue-600 flex items-center'>
                                 <Coins className='w-3 h-3 mr-1' />
-                                {item.usdcPrice} USDC
+                                item.usdcPrice USDC
                               </div>
                             </div>
 
@@ -172,12 +177,12 @@ export default function Cart({ isOpen, onClose }: CartProps) {
 
                               <button
                                 onClick={() =>
-                                  item.maxInStock > item.quantity &&
+                                  // item.maxInStock > item.quantity &&
                                   handleIncreaseQuantity(item.id, item.quantity)
                                 }
                                 className='w-10 h-10 rounded-lg transition-all duration-200 dark:bg-gradient-to-br dark:from-gaming-dark dark:to-gaming-darker dark:border-2 dark:border-gaming-purple/50 dark:text-white dark:hover:border-gaming-cyan light:bg-gradient-to-br light:from-gray-100 light:to-gray-200 light:border-2 light:border-gray-300 light:text-gray-700 light:hover:border-blue-500 hover:scale-105 active:scale-95 flex items-center justify-center cursor-pointer relative z-10 disabled:cursor-not-allowed'
                                 style={{ pointerEvents: 'auto' }}
-                                disabled={item.maxInStock <= item.quantity}
+                                // disabled={item.maxInStock <= item.quantity}
                               >
                                 <Plus className='w-5 h-5' />
                               </button>
@@ -185,10 +190,11 @@ export default function Cart({ isOpen, onClose }: CartProps) {
                               {/* Item Total */}
                               <div className='ml-auto text-right'>
                                 <div className='font-semibold text-lg transition-colors duration-300 dark:text-white light:text-gray-900'>
-                                  ${(item.amount * item.quantity).toFixed(2)}
+                                  {/* ${(item.amount * item.quantity).toFixed(2)} */}
                                 </div>
                                 <div className='text-xs font-medium transition-colors duration-300 dark:text-gaming-cyan light:text-blue-600'>
-                                  {(parseFloat(item.usdcPrice) * item.quantity).toFixed(2)} USDC
+                                  {/* {(parseFloat(item.usdcPrice) * item.quantity).toFixed(2)} USDC */}
+                                  2USDC
                                 </div>
                               </div>
                             </div>
@@ -198,7 +204,7 @@ export default function Cart({ isOpen, onClose }: CartProps) {
                     ))}
 
                     {/* Clear Cart Button */}
-                    {state.items.length > 0 && (
+                    {totalItems > 0 && (
                       <button
                         onClick={handleClearCart}
                         className='w-full py-2 px-4 bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 hover:border-red-500/50 rounded-lg text-red-400 hover:text-red-300 transition-colors flex items-center justify-center space-x-2'
@@ -212,25 +218,25 @@ export default function Cart({ isOpen, onClose }: CartProps) {
               </div>
 
               {/* Footer / Checkout */}
-              {state.items.length > 0 && (
+              {totalItems > 0 && (
                 <div className='transition-colors duration-300 dark:border-t dark:border-gaming-purple/30 light:border-t light:border-gray-200 p-6'>
                   {/* Totals */}
                   <div className='space-y-2 mb-6'>
                     <div className='flex justify-between transition-colors duration-300 dark:text-gray-400 light:text-gray-600'>
-                      <span>Subtotal ({state.totalItems} items):</span>
-                      <span>${state.totalAmount.toFixed(2)}</span>
+                      {/* <span>Subtotal ({state.totalItems} items):</span> */}
+                      {/* <span>${state.totalAmount.toFixed(2)}</span> */}
                     </div>
                     <div className='flex justify-between text-sm transition-colors duration-300 dark:text-gaming-cyan light:text-blue-600'>
-                      <span>USDC Total:</span>
-                      <span>{state.totalUSDC.toFixed(2)} USDC</span>
+                      {/* <span>USDC Total:</span> */}
+                      {/* <span>{state.totalUSDC.toFixed(2)} USDC</span> */}
                     </div>
                     <div className='transition-colors duration-300 dark:border-t dark:border-gaming-purple/30 light:border-t light:border-gray-200 pt-2'>
                       <div className='flex justify-between text-xl font-gaming font-bold transition-colors duration-300 dark:text-white light:text-gray-900'>
                         <span>Total:</span>
                         <div className='text-right'>
-                          <div>${state.totalAmount.toFixed(2)}</div>
+                          {/* <div>${state.totalAmount.toFixed(2)}</div> */}
                           <div className='text-sm transition-colors duration-300 dark:text-gaming-cyan light:text-blue-600'>
-                            {state.totalUSDC.toFixed(2)} USDC
+                            {/* {state.totalUSDC.toFixed(2)} USDC */}
                           </div>
                         </div>
                       </div>

@@ -16,7 +16,8 @@ import {
   Plus,
   Coins
 } from './icons'
-import { useCart } from '../lib/cart-context'
+// import { useCart } from '../lib/cart-context'
+import { useCart } from '@/contexts/CartProvider2'
 import { useSearch } from '../lib/search-context'
 import type { GiftCard } from '../lib/cart-context'
 
@@ -27,7 +28,7 @@ export default function GiftCardGrid() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const [showFilters, setShowFilters] = useState(false)
   
-  const { addToCart, getItemQuantity } = useCart()
+  const { addToCart } = useCart()
   const { searchTerm, setSearchTerm } = useSearch()
 
   const giftCards: GiftCard[] = [
@@ -590,8 +591,8 @@ export default function GiftCardGrid() {
     }
   }
 
-  const handleAddToCart = (card: GiftCard) => {
-    addToCart(card)
+  const handleAddToCart = (giftCard: GiftCard) => {
+    addToCart(giftCard.id)
   }
 
   return (
@@ -686,7 +687,8 @@ export default function GiftCardGrid() {
           }
         >
           {filteredCards.map((card) => {
-            const inCartQuantity = getItemQuantity(card.id)
+            // const inCartQuantity = getItemQuantity(card.id)
+            const inCartQuantity = 99
             
             return (
               <motion.div
