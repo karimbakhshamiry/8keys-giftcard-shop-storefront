@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { ArrowRight, Play, Shield, Zap, Globe, Star } from './icons'
-import { useCart } from '../lib/cart-context'
+// import { useCart } from '../lib/cart-context'
 
 export default function Hero() {
   const stats = [

@@ -16,17 +16,22 @@ import {
   ShoppingCart,
   Search
 } from './icons'
-import { useCart } from '../lib/cart-context'
+// import { useCart } from '../lib/cart-context'
 import { useSearch } from '../lib/search-context'
 import Cart from './Cart'
 import ThemeToggle from './ThemeToggle'
+import { useCart } from '@/contexts/CartProvider2'
 
 export default function Navigation() {
   const [isOpen, setIsOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [isCartOpen, setIsCartOpen] = useState(false)
-  const { state } = useCart()
+  // const { state } = useCart()
+  const { cart } = useCart()
+  const state = {
+    totalItems: cart?.items?.length
+  }
   const { searchTerm, setSearchTerm } = useSearch()
 
   useEffect(() => {

@@ -16,6 +16,7 @@ const Zap: React.FC<{ className?: string }> = ({ className = '' }) => (
 )
 
 export default function PopularCards() {
+  return null
   const [hoveredCard, setHoveredCard] = useState<string | null>(null)
   const { addToCart, getItemQuantity } = useCart()
 

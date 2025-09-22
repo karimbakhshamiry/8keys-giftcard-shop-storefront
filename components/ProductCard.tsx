@@ -4,8 +4,10 @@ import { motion } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
 import { Star, ShoppingCart, Plus, Coins } from './icons'
-import { useCart } from '../lib/cart-context'
+// import { useCart } from '../lib/cart-context'
 import { HttpTypes } from '../lib/types'
+import { useCart } from '@/contexts/CartProvider2'
+
 
 interface ProductCardProps {
   product: HttpTypes.StoreProduct
@@ -13,7 +15,8 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product, countryCode = 'us' }: ProductCardProps) {
-  const { addToCart, getItemQuantity } = useCart()
+
+  const { addToCart } = useCart()
 
   // Get the first variant for pricing
   const variant = product.variants?.[0]
@@ -74,11 +77,12 @@ export default function ProductCard({ product, countryCode = 'us' }: ProductCard
         external_id: product.subtitle, // Use product.subtitle as external_id
         maxInStock: variant?.inventory_quantity ?? 0
       }
-      addToCart(giftCard)
+      addToCart(variant.id)
     }
   }
 
-  const quantity = getItemQuantity(product.id)
+  // const quantity = getItemQuantity(product.id)
+  const quantity = 0
 
   return (
     <motion.div

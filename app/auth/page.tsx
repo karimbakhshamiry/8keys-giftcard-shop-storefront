@@ -15,6 +15,8 @@ import {
   Gift
 } from '../../components/icons';
 
+import { useCart } from '@/contexts/CartProvider2';
+
 // Move enum inside component to avoid Next.js export issues
 const AUTH_VIEW = {
   SIGN_IN: "sign-in",
@@ -37,6 +39,7 @@ export default function AuthPage() {
   });
 
   const { login, register, isAuthenticated, loading } = useAuth();
+  const {transferCartForLoggedUser} = useCart()
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -79,6 +82,7 @@ export default function AuthPage() {
       if (success) {
         console.log('Auth Page: Login successful, preparing redirect');
         setHasRedirected(true);
+        transferCartForLoggedUser()
         
         const redirectTo = searchParams.get('redirect') || '/gift-cards';
         console.log('Auth Page: Redirecting to:', redirectTo);
