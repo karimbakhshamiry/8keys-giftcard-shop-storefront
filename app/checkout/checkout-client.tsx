@@ -7,7 +7,7 @@ import Navigation from '../../components/Navigation'
 import Footer from '../../components/Footer'
 import Loading, { Spinner } from '../../components/Loading'
 import ProtectedPage from '../../components/ProtectedPage'
-import { useCart } from '../../lib/cart-context'
+// import { useCart } from '../../lib/cart-context'
 import { useAuth } from '../../lib/auth-context'
 import { 
   registerOrderWithBackend, 
@@ -45,6 +45,8 @@ import {
   type SepaTransferRequest,
   type VirtualCardResponse
 } from '../../lib/services/payment-service'
+// import { useCart } from '@/lib/cart-context'
+import { useCart } from '@/contexts/CartProvider2'
 
 interface CheckoutStep {
   id: number
@@ -76,7 +78,9 @@ const WEBHOOK_BASE_URL = process.env.NEXT_PUBLIC_WEBHOOK_SERVER_URL || 'https://
 
 export default function CheckoutClient() {
   const router = useRouter()
-  const { state: cartState, clearCart } = useCart()
+  // const { state: cartState, clearCart,  } = useCart()
+  const {cart, clearCart, } = useCart()
+  console.log(cart)
   const { customer } = useAuth()
   
   const [currentStep, setCurrentStep] = useState(1)
@@ -152,7 +156,8 @@ export default function CheckoutClient() {
   ]
 
   useEffect(() => {
-    if (cartState.items.length === 0 && !purchaseCompleted) {
+    // if (cartState.items.length === 0 && !purchaseCompleted) {
+    if (cart?.items?.length === 0 && !purchaseCompleted) {
       setTimeout(() => {
         router.push('/gift-cards')
       }, 2000)
@@ -161,7 +166,7 @@ export default function CheckoutClient() {
     if (customer?.email && customer.email !== 'unknown@email.com') {
       setCustomerEmail(customer.email)
     }
-  }, [cartState.items.length, router, customer, purchaseCompleted])
+  }, [cart?.items?.length, router, customer, purchaseCompleted])
 
   // Fetch user info and P100 USDC balance/address on mount (step 3 only)
   useEffect(() => {
@@ -169,11 +174,9 @@ export default function CheckoutClient() {
       setBalanceLoading(true)
       setBalanceError(null)
       try {
-        const userRes = await fetch('/api/user-info')
-        if (!userRes.ok) throw new Error('Failed to fetch user info')
-        const user = await userRes.json()
-        if (!user.id) throw new Error('User ID not found')
-        const balanceRes = await fetch(`/api/p100-balance?externalUserId=${user.id}`)
+        const externalUserId = customer?.id
+        if (!externalUserId) throw new Error('User ID not found')
+        const balanceRes = await fetch(`/api/p100-balance?externalUserId=${externalUserId}`)
         if (!balanceRes.ok) throw new Error('Failed to fetch wallet balances')
         const data = await balanceRes.json()
         const usdc = (data.cryptoBalances || []).find((b: any) => b.name === 'usdc')
@@ -234,12 +237,15 @@ export default function CheckoutClient() {
           spendingBefore,
           spendingAfter: after,
           difference: after - spendingBefore,
-          required: cartState.totalUSDC,
-          isEnough: after - spendingBefore >= cartState.totalUSDC
+          // required: cartState.totalUSDC,
+          required: cart?.total,
+          // isEnough: after - spendingBefore >= cartState.totalUSDC
+          isEnough: after - spendingBefore >= (cart?.total === undefined ? 0 : cart?.total)
         });
         
         // If enough spent, proceed with purchase
-        if (after - spendingBefore >= cartState.totalUSDC) {
+        // if (after - spendingBefore >= cartState.totalUSDC) {
+        if (after - spendingBefore >= (cart?.total === undefined ? 0 : cart?.total)) {
           console.log('✅ Payment detected! Proceeding with purchase...');
           setIsPolling(false);
           setPaymentStatus('confirmed');
@@ -270,13 +276,16 @@ export default function CheckoutClient() {
       
       const mockPaymentData: PaymentData = {
         id: 'payment_' + Date.now(),
-        amount: cartState.totalAmount,
-        cryptoAmount: cartState.totalUSDC,
+        // amount: cartState.totalAmount,
+        amount: cart?.total!,
+        // cryptoAmount: cartState.totalUSDC,
+        cryptoAmount: cart?.total!.toFixed(2),
         cryptoCurrency: 'USDC',
         address: 'UQD1234567890ABCDEF1234567890ABCDEF1234567890',
         qrCode: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
         expiresAt: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
-        paymentUrl: `usdc:UQD1234567890ABCDEF1234567890ABCDEF1234567890?amount=${cartState.totalUSDC}`,
+        // paymentUrl: `usdc:UQD1234567890ABCDEF1234567890ABCDEF1234567890?amount=${cartState.totalUSDC}`,
+        paymentUrl: `usdc:UQD1234567890ABCDEF1234567890ABCDEF1234567890?amount=${cart?.total}`,
         network: 'TON'
       }
       
@@ -298,21 +307,24 @@ export default function CheckoutClient() {
     console.log('📧 customerEmail:', customerEmail);
     console.log('👤 customer?.email:', customer?.email);
     console.log('🆔 orderId:', orderId);
-    console.log('🛒 cartState.items:', cartState.items);
+    console.log('🛒 cartState.items:', cart?.items);
     setIsProcessing(true)
     setDeliveryError('')
     
     try {
       console.log('⏳ Waiting 2 seconds...');
       await new Promise(resolve => setTimeout(resolve, 2000))
+
+      if(!cart?.items) return ""
       
-      const orderProducts: OrderProduct[] = cartState.items.map(item => ({
+      const orderProducts: OrderProduct[] = cart?.items.map(item => ({
         productId: item.id,
-        external_id: item.external_id || item.id,
+        // external_id: item.externalid || item.id,
+        external_id: item.id,
         quantity: item.quantity,
-        price_cents: Math.round(item.amount * 100),
+        price_cents: Math.round(item.unit_price * 100),
         productVariant: 'default',
-        name: item.name,
+        name: item.title,
         platform: item.platform || 'Unknown'
       }))
 
@@ -360,7 +372,8 @@ export default function CheckoutClient() {
       } else {
         paymentDataToSend = {
           cryptoAddress: paymentData?.address || usdcAddress,
-          amount: paymentData?.cryptoAmount || cartState.totalUSDC,
+          // amount: paymentData?.cryptoAmount || cartState.totalUSDC,
+          amount: paymentData?.cryptoAmount || cart.total,
           currency: paymentData?.cryptoCurrency || 'USDC'
         }
       }
@@ -377,8 +390,10 @@ export default function CheckoutClient() {
           phone: customer?.phone ?? undefined
         },
         products: orderProducts,
-        totalAmount: cartState.totalAmount,
-        cryptoAmount: cartState.totalUSDC,
+        // totalAmount: cartState.totalAmount,
+        totalAmount: cart?.total,
+        // cryptoAmount: cartState.totalUSDC,
+        cryptoAmount: cart.total,
         cryptoCurrency: 'USDC',
         paymentIntentId: paymentData?.id,
         paymentMethod: paymentMethod,
@@ -472,10 +487,8 @@ export default function CheckoutClient() {
       }
 
       // Get user info for P100 API
-      const userRes = await fetch('/api/user-info')
-      if (!userRes.ok) throw new Error('Failed to fetch user info')
-      const user = await userRes.json()
-      if (!user.id) throw new Error('User ID not found')
+      const externalUserId = customer?.id
+      if (!externalUserId) throw new Error('User ID not found')
 
       // Generate order ID if not already set
       let currentOrderId = orderId
@@ -485,8 +498,8 @@ export default function CheckoutClient() {
       }
 
       console.log('🏦 Creating P100 SEPA transfer:', {
-        sourceExternalUserId: user.id,
-        amount: cartState.totalAmount,
+        sourceExternalUserId: externalUserId,
+        amount: cart?.total,
         receiverFirstName: sepaFormData.firstName,
         receiverLastName: sepaFormData.lastName,
         destinationIban: sepaFormData.iban
@@ -499,9 +512,9 @@ export default function CheckoutClient() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          sourceExternalUserId: user.id,
+          sourceExternalUserId: externalUserId,
           currency: 'eur',
-          amount: cartState.totalAmount,
+          amount: cart?.total,
           receiverFirstName: sepaFormData.firstName,
           receiverLastName: sepaFormData.lastName,
           receiverType: 'NATURAL',
@@ -522,8 +535,8 @@ export default function CheckoutClient() {
       // Store payment data
       setPaymentData({
         id: sepaTransferData.transferId,
-        amount: cartState.totalAmount,
-        cryptoAmount: cartState.totalUSDC,
+        amount: cart?.total!,
+        cryptoAmount: cart?.total!,
         cryptoCurrency: 'USDC',
         address: sepaFormData.iban,
         qrCode: '',
@@ -565,10 +578,8 @@ export default function CheckoutClient() {
       }
 
       // Get user info for P100 API
-      const userRes = await fetch('/api/user-info')
-      if (!userRes.ok) throw new Error('Failed to fetch user info')
-      const user = await userRes.json()
-      if (!user.id) throw new Error('User ID not found')
+      const externalUserId = customer?.id
+      if (!externalUserId) throw new Error('User ID not found')
 
       // Generate order ID if not already set
       let currentOrderId = orderId
@@ -578,9 +589,9 @@ export default function CheckoutClient() {
       }
 
       console.log('💳 Creating P100 virtual card:', {
-        externalUserId: user.id,
+        externalUserId: externalUserId,
         label: virtualCardFormData.cardLabel,
-        amount: cartState.totalAmount
+        amount: cart?.total
       });
 
       // Create virtual card using P100 API
@@ -590,7 +601,7 @@ export default function CheckoutClient() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          externalUserId: user.id,
+          externalUserId: externalUserId,
           label: virtualCardFormData.cardLabel,
           pin: virtualCardFormData.pin
         }),
@@ -608,8 +619,8 @@ export default function CheckoutClient() {
       // Store payment data
       setPaymentData({
         id: virtualCardData.cardId,
-        amount: cartState.totalAmount,
-        cryptoAmount: cartState.totalUSDC,
+        amount: cart?.total!,
+        cryptoAmount: cart?.total!,
         cryptoCurrency: 'USDC',
         address: `**** **** **** ${virtualCardData.cardNumber.slice(-4)}`,
         qrCode: '',
@@ -630,7 +641,7 @@ export default function CheckoutClient() {
     }
   }
 
-  if (cartState.items.length === 0 && !purchaseCompleted) {
+  if ((cart?.items === undefined ? 0 : cart?.items.length) === 0 && !purchaseCompleted) {
     return (
       <ProtectedPage redirectTo="/auth?redirect=/checkout">
       <div className="min-h-screen bg-gradient-to-br from-gaming-dark via-gaming-purple to-gaming-dark">
@@ -705,19 +716,21 @@ export default function CheckoutClient() {
               <h2 className="text-2xl font-gaming font-bold text-white mb-6">Order Review</h2>
               
               <div className="space-y-4 mb-6">
-                {cartState.items.map((item, index) => (
+                {
+                cart?.items === undefined ?  null:
+                cart?.items.map((item, index) => (
                   <div key={index} className="flex items-center justify-between p-4 rounded-lg border border-gaming-cyan/30 bg-gaming-dark/50">
                     <div className="flex items-center space-x-4">
                       <div className="w-12 h-12 bg-gaming-gold/20 rounded-lg flex items-center justify-center">
                         <Gift className="w-6 h-6 text-gaming-gold" />
                       </div>
                       <div>
-                        <h3 className="font-semibold text-white">{item.name}</h3>
-                        <p className="text-sm text-gray-400">{item.platform}</p>
+                        <h3 className="font-semibold text-white">{item?.title}</h3>
+                        <p className="text-sm text-gray-400">{item?.platform}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <div className="font-bold text-gaming-neon">${item.amount.toFixed(2)}</div>
+                      <div className="font-bold text-gaming-neon">${item.unit_price.toFixed(2)}</div>
                       <div className="text-sm text-gray-400">Qty: {item.quantity}</div>
                     </div>
                   </div>
@@ -727,15 +740,15 @@ export default function CheckoutClient() {
               <div className="border-t border-gaming-cyan/30 pt-4 mb-6">
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-gray-400">Subtotal:</span>
-                  <span className="text-white">${cartState.totalAmount.toFixed(2)}</span>
+                  <span className="text-white">${cart?.total.toFixed(2)}</span>
                 </div>
                 <div className="flex justify-between items-center mb-2">
                   <span className="text-gray-400">Crypto Amount:</span>
-                  <span className="text-gaming-gold">{cartState.totalUSDC.toFixed(6)} USDC</span>
+                  <span className="text-gaming-gold">{cart?.total.toFixed(6)} USDC</span>
                 </div>
                 <div className="flex justify-between items-center text-lg font-bold">
                   <span className="text-white">Total:</span>
-                  <span className="text-gaming-neon">{cartState.totalUSDC.toFixed(6)} USDC</span>
+                  <span className="text-gaming-neon">{cart?.total.toFixed(6)} USDC</span>
                 </div>
               </div>
 
@@ -1013,7 +1026,7 @@ export default function CheckoutClient() {
                       {pollingError && (
                         <div className="text-center text-red-400 mt-2">{pollingError}</div>
                       )}
-                      {spendingAfter !== null && spendingAfter - (spendingBefore || 0) < cartState.totalUSDC && !isPolling && (
+                      {spendingAfter !== null && spendingAfter - (spendingBefore || 0) < cart?.total! && !isPolling && (
                         <div className="text-center text-yellow-400 mt-2">
                           Payment not detected yet. Please make sure you sent the correct amount.
                         </div>
@@ -1091,7 +1104,7 @@ export default function CheckoutClient() {
                       <div className="space-y-2">
                         <div className="flex justify-between">
                           <span className="text-gray-300">Amount:</span>
-                          <span className="text-white font-semibold">€{(cartState.totalAmount * 0.85).toFixed(2)}</span>
+                          <span className="text-white font-semibold">€{(cart?.total! * 0.85).toFixed(2)}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-gray-300">Fee:</span>
@@ -1099,7 +1112,7 @@ export default function CheckoutClient() {
                         </div>
                         <div className="flex justify-between border-t border-green-500/30 pt-2">
                           <span className="text-white font-semibold">Total:</span>
-                          <span className="text-green-400 font-bold">€{(cartState.totalAmount * 0.85 + 10).toFixed(2)}</span>
+                          <span className="text-green-400 font-bold">€{(cart?.total * 0.85 + 10).toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
@@ -1193,7 +1206,7 @@ export default function CheckoutClient() {
                         </div>
                         <div className="flex justify-between border-t border-blue-500/30 pt-2">
                           <span className="text-white font-semibold">Purchase Amount:</span>
-                          <span className="text-blue-400 font-bold">€{cartState.totalAmount.toFixed(2)}</span>
+                          <span className="text-blue-400 font-bold">€{cart?.total}</span>
                         </div>
                       </div>
                     </div>
@@ -1278,7 +1291,7 @@ export default function CheckoutClient() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-400">Amount:</span>
-                        <span className="text-white">€{cartState.totalAmount.toFixed(2)}</span>
+                        <span className="text-white">€{cart?.total.toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-400">Destination IBAN:</span>
@@ -1437,7 +1450,7 @@ export default function CheckoutClient() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-400">Total Paid:</span>
-                        <span className="text-gaming-neon">{cartState.totalUSDC.toFixed(6)} USDC</span>
+                        <span className="text-gaming-neon">{cart?.total.toFixed(6)} USDC</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-gray-400">Email:</span>
