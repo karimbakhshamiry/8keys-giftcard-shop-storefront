@@ -9,6 +9,7 @@ import {
 import { HttpTypes } from "@medusajs/types"
 import { useRegion } from "@/contexts/RegionProvider"
 import { sdk } from "@/lib/sdk"
+import { useRouter } from "next/navigation";
 
 type CartContextType = {
   cart?: HttpTypes.StoreCart
@@ -18,8 +19,9 @@ type CartContextType = {
   refreshCart: () => void
   addToCart: (variant_id: string, quantity?: number) => void
   updateItemQuantity: (itemId: string, quantity: number) => void
-  removeItem: (itemId: string) => void,
+  removeItem: (itemId: string) => void
   transferCartForLoggedUser: () => void
+  clearCart: () => void
 }
 
 const CartContext = createContext<CartContextType | null>(null)
@@ -113,21 +115,44 @@ export const CartProvider2 = ({ children }: CartProviderProps) => {
       // use cart
       console.log(cart)
       setCart(cart)
+    }).catch(err=>{
+      alert("Could not update item quantity ")
     })
   }
   
-   const removeItem = (itemId: string) => {
+   const removeItem = (itemId: string) => 
+    {
+      console.log('---------------------')
+     console.log("itemId", itemId)
     const cartId = localStorage.getItem("cart_id")
-  
+      console.log('cartId', cartId)
     if (!cartId) {
       return
     }
   
     sdk.store.cart.deleteLineItem(cartId, itemId)
-    .then(({ parent: cart }) => {
-      // use cart
-      console.log(cart)
+    .then(({ cart }) => {
       setCart(cart)
+    })
+  }
+
+  const clearCart = async () => {
+    if (!cart || !cart.items || cart.items.length === 0) {
+      return;
+    }
+    const cartId = localStorage.getItem("cart_id")
+    if (!cartId) {
+      return;
+    }
+
+    // Remove each item sequentially
+    for (const item of cart.items) {
+      await sdk.store.cart.deleteLineItem(cartId, item.id)
+    }
+
+    // Retrieve the updated cart
+    sdk.store.cart.retrieve(cartId).then(({ cart: updatedCart }) => {
+      setCart(updatedCart);
     })
   }
 
@@ -139,7 +164,8 @@ export const CartProvider2 = ({ children }: CartProviderProps) => {
       addToCart,
       removeItem,
       updateItemQuantity,
-      transferCartForLoggedUser
+      transferCartForLoggedUser,
+      clearCart,
     }}>
       {children}
     </CartContext.Provider>
@@ -155,3 +181,19 @@ export const useCart = () => {
 
   return context
 }
+
+// In your component
+// import { useRouter } from "next/navigation";
+// import { useCart } from "@/contexts/CartProvider2";
+
+const CheckoutButton = () => {
+  const router = useRouter();
+  const { cart } = useCart();
+
+  const goToCheckout = () => {
+    if (!cart) return;
+    router.push(`/checkout?cart_id=${cart.id}`);
+  };
+
+  return <button onClick={goToCheckout}>Checkout</button>;
+};
