@@ -1,5 +1,7 @@
 // Payment Service for Crypto, SEPA, and Virtual Card operations
 
+// For serverless API proxying, we use Next.js API routes. When running in the browser,
+// we also support a test mode toggle that can be enabled via env or localStorage.
 const API_BASE_URL = process.env.NEXT_PUBLIC_PAYMENT_API_URL || 'https://api.payment-provider.com'
 
 // Types for Crypto Deposit
@@ -120,19 +122,42 @@ export class PaymentService {
     endpoint: string,
     options: RequestInit = {}
   ): Promise<T> {
-    const url = `${API_BASE_URL}${endpoint}`
-    
+    // Determine test mode from env or localStorage toggle
+    let testMode = false
+    try {
+      if (typeof process !== 'undefined') {
+        // Prefer NEXT_PUBLIC_ var for client-side
+        // const envFlag = (process as any).env?.NEXT_PUBLIC_PAYMENTS_TEST_MODE || (process as any).env?.PAYMENTS_TEST_MODE
+        // if (envFlag === true) testMode = true
+        if (process.env.PAYMENTS_TEST_MODE) testMode = true
+      }
+      if (typeof window !== 'undefined') {
+        const stored = window.localStorage.getItem('payments_test_mode')
+        if (stored === 'true') testMode = true
+      }
+    } catch {}
+
+    // Append mock=1 for our internal API routes to trigger mocking
+    let url = `${API_BASE_URL}${endpoint}`
+    if (endpoint.startsWith('/api/') && testMode) {
+      url += endpoint.includes('?') ? '&mock=1' : '?mock=1'
+    }
+
     const response = await fetch(url, {
       headers: {
         'Content-Type': 'application/json',
-        ...options.headers,
+        ...(options.headers || {}),
       },
       ...options,
     })
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}))
-      throw new Error(errorData.errorName || `HTTP ${response.status}`)
+      let errorMessage = `HTTP ${response.status}`
+      try {
+        const errorData = await response.json()
+        errorMessage = errorData.error || errorData.errorName || JSON.stringify(errorData)
+      } catch {}
+      throw new Error(errorMessage)
     }
 
     return response.json()
@@ -151,7 +176,8 @@ export class PaymentService {
 
   // SEPA Transfer Methods
   static async createSepaTransfer(data: SepaTransferRequest): Promise<SepaTransferResponse> {
-    return this.makeRequest('/v1/sepa-transfer', {
+    // Proxy through Next.js API route; mock mode supported via makeRequest()
+    return this.makeRequest('/api/p100-sepa-transfer', {
       method: 'POST',
       body: JSON.stringify(data),
     })
@@ -163,7 +189,8 @@ export class PaymentService {
 
   // Virtual Card Methods
   static async createVirtualCard(data: CreateVirtualCardRequest): Promise<VirtualCardResponse> {
-    return this.makeRequest('/v1/card/virtual', {
+    // Proxy through Next.js API route; mock mode supported via makeRequest()
+    return this.makeRequest('/api/p100-virtual-card', {
       method: 'POST',
       body: JSON.stringify(data),
     })

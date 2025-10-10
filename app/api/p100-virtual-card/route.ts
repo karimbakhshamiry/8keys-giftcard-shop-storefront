@@ -1,182 +1,57 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { p100Service } from '../../../lib/p100'
+import { NextResponse } from 'next/server'
 
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    
-    const {
-      externalUserId,
-      label,
-      pin
-    } = body
-
-    // Validate required fields
-    if (!externalUserId || !label || !pin) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Missing required fields',
-          details: 'externalUserId, label, and pin are required'
-        },
-        { status: 400 }
-      )
-    }
-
-    // Validate label length (3-30 characters)
-    if (label.length < 3 || label.length > 30) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Invalid label length',
-          details: 'Label must be between 3 and 30 characters'
-        },
-        { status: 400 }
-      )
-    }
-
-    // Validate PIN (4 digits)
-    if (!/^\d{4}$/.test(pin)) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Invalid PIN format',
-          details: 'PIN must be exactly 4 digits'
-        },
-        { status: 400 }
-      )
-    }
-
-    console.log('Creating P100 virtual card:', {
-      externalUserId,
-      label,
-      pinLength: pin.length
-    })
-
-    // Create virtual card via P100 API
-    const cardResponse = await p100Service.createVirtualCard({
-      externalUserId,
-      label,
-      pin
-    })
-
-    console.log('P100 virtual card created successfully:', {
-      cardId: cardResponse.cardId,
-      cardLastDigits: cardResponse.cardNumber.slice(-4)
-    })
-
-    return NextResponse.json({
-      success: true,
-      cardId: cardResponse.cardId,
-      cardNumber: cardResponse.cardNumber,
-      cvv: cardResponse.cvv,
-      exp: cardResponse.exp,
-      label: label,
-      message: 'Virtual card created successfully'
-    })
-
-  } catch (error: any) {
-    console.error('P100 virtual card creation error:', error)
-
-    // Handle specific P100 errors
-    if (error.message?.includes('P412')) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'User not found',
-          errorCode: 'P412',
-          details: 'The specified user does not exist in P100 system'
-        },
-        { status: 400 }
-      )
-    }
-
-    if (error.message?.includes('P451')) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Country not supported',
-          errorCode: 'P451',
-          details: 'Virtual cards are not available for users from this country'
-        },
-        { status: 400 }
-      )
-    }
-
-    if (error.message?.includes('P455')) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'User suspended',
-          errorCode: 'P455',
-          details: 'User account is suspended and cannot create virtual cards'
-        },
-        { status: 400 }
-      )
-    }
-
-    return NextResponse.json(
-      { 
-        success: false,
-        error: 'Virtual card creation failed',
-        details: error.message || 'Unknown error occurred'
-      },
-      { status: 500 }
-    )
-  }
-}
-
-export async function GET(request: NextRequest) {
+export async function POST(request: Request) {
   try {
     const { searchParams } = new URL(request.url)
-    const externalUserId = searchParams.get('externalUserId')
+    const mockFlag = searchParams.get('mock') === '1' || process.env.PAYMENTS_TEST_MODE === 'true'
+    const body = await request.json()
 
-    if (!externalUserId) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'Missing externalUserId parameter'
-        },
-        { status: 400 }
-      )
+    if (mockFlag) {
+      const now = new Date()
+      const mm = String(now.getMonth() + 1).padStart(2, '0')
+      const yy = String((now.getFullYear() + 3) % 100).padStart(2, '0')
+      const data = {
+        cardId: `test_card_${Date.now()}`,
+        cardNumber: '4111 1111 1111 1111',
+        cvv: '123',
+        exp: `${mm}/${yy}`,
+        ...body,
+      }
+      return NextResponse.json(data, { status: 200 })
     }
 
-    console.log('Fetching P100 user cards:', externalUserId)
+    const apiKey = process.env.P100_API_KEY
+    if (!apiKey) {
+      return NextResponse.json({ error: 'Missing P100_API_KEY' }, { status: 500 })
+    }
 
-    // Get all user cards via P100 API
-    const cards = await p100Service.getUserCards(externalUserId)
+    // Expecting: externalUserId, label, pin
+    const apiUrl = 'https://partner-api-stage.p100.io/v1/card/virtual'
 
-    console.log('P100 user cards fetched:', cards.length)
-
-    return NextResponse.json({
-      success: true,
-      cards: cards,
-      count: cards.length
+    const res = await fetch(apiUrl, {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'Content-Type': 'application/json',
+        'Accept': 'application/json',
+      },
+      body: JSON.stringify(body),
     })
 
-  } catch (error: any) {
-    console.error('P100 get user cards error:', error)
+    const data = await res.json().catch(() => ({}))
 
-    // Handle specific P100 errors
-    if (error.message?.includes('P412')) {
-      return NextResponse.json(
-        { 
-          success: false,
-          error: 'User not found',
-          errorCode: 'P412',
-          details: 'The specified user does not exist in P100 system'
-        },
-        { status: 400 }
-      )
+    if (!res.ok) {
+      return NextResponse.json({ error: 'Failed to create virtual card', details: data }, { status: res.status })
     }
 
-    return NextResponse.json(
-      { 
-        success: false,
-        error: 'Failed to fetch user cards',
-        details: error.message || 'Unknown error occurred'
-      },
-      { status: 500 }
-    )
+    // Normalize response to expected shape
+    const cardId = data.cardId || data.id || data.card_id
+    const cardNumber = data.cardNumber || data.card_number
+    const cvv = data.cvv || data.cvc
+    const exp = data.exp || data.expiry || data.expiration
+
+    return NextResponse.json({ ...data, cardId, cardNumber, cvv, exp }, { status: 200 })
+  } catch (err: any) {
+    return NextResponse.json({ error: 'Failed to create virtual card', details: err?.message || err }, { status: 500 })
   }
-} 
+}
